@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>门店智能助手 · CFO经营驾驶舱</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">店智</div>
+        <div><strong>门店智能助手</strong><span>STORE COPILOT</span></div>
+      </div>
+
+      <nav class="nav-list" aria-label="主导航">
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span><span>财务驾驶舱</span></button>
+        <button class="nav-item" data-view="settlement"><span class="nav-icon">↔</span><span>资金效率</span></button>
+        <button class="nav-item" data-view="inventory"><span class="nav-icon">◇</span><span>库存效率</span></button>
+        <button class="nav-item" data-view="agents"><span class="nav-icon sparkle">✦</span><span>3个决策智能体</span><i class="online-dot"></i></button>
+        <div class="nav-label">管理闭环</div>
+        <button class="nav-item" data-view="alerts"><span class="nav-icon">△</span><span>风险与四象限</span><b class="nav-badge danger">126</b></button>
+        <button class="nav-item" data-view="stores"><span class="nav-icon">▦</span><span>门店360</span><b class="nav-badge">7,026</b></button>
+        <button class="nav-item" data-view="tasks"><span class="nav-icon">✓</span><span>审批与任务</span><b class="nav-badge">38</b></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="system-health"><span class="pulse-dot"></span><div><strong>系统运行正常</strong><small>数据更新于 08:30</small></div></div>
+        <button class="user-card"><span class="avatar">CFO</span><span><strong>财务管理中心</strong><small>集团管理视角</small></span><span>⋯</span></button>
+      </div>
+    </aside>
+
+    <main class="main-stage">
+      <header class="topbar">
+        <div class="breadcrumb"><span>集团财务管理</span><b>/</b><strong id="viewTitle">财务驾驶舱</strong></div>
+        <div class="top-actions">
+          <label class="search-box"><span>⌕</span><input id="globalSearch" type="search" placeholder="搜索门店、地区或风险标签" /></label>
+          <button class="icon-button" title="消息">◌<i></i></button>
+          <button class="primary-button" id="exportBtn"><span>⇩</span> 导出经营简报</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <section class="page-head">
+          <div><p class="eyebrow">STORE FINANCE INTELLIGENCE CENTER</p><h1 id="pageHeading">门店财务驾驶舱</h1><p id="pageSubheading">统一观察资金、收入、库存与智能体建议，形成CFO审批闭环。</p></div>
+          <div class="filter-row">
+            <select id="periodFilter"><option>2026年8月</option><option>2026年7月</option><option>2026年Q2</option></select>
+            <select id="regionFilter"><option value="all">全国</option><option value="华南">华南</option><option value="华东">华东</option><option value="华北">华北</option><option value="西南">西南</option><option value="华中">华中</option></select>
+            <select id="provinceFilter"><option value="all">全部省份</option></select>
+            <select id="typeFilter"><option value="all">全部门店类型</option><option value="实体服务中心">实体服务中心</option><option value="实体店">实体店</option><option value="线上微店">线上微店</option></select>
+            <select id="storeFilter"><option value="all">全部门店</option></select>
+            <button class="ghost-button" id="resetFilters">重置</button>
+          </div>
+        </section>
+
+        <div id="viewContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="store-drawer" id="storeDrawer" aria-hidden="true">
+    <div class="drawer-head"><div><span class="drawer-kicker">STORE 360° PROFILE</span><h2 id="drawerStoreName">门店名称</h2><p id="drawerStoreMeta">门店信息</p></div><button id="closeDrawer" class="close-button">×</button></div>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <div class="toast" id="toast"><span>✓</span><div><strong>经营简报已生成</strong><small>演示原型未实际下载文件</small></div></div>
+  <script src="./app.js"></script>
+</body>
+</html>

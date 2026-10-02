@@ -1,0 +1,667 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>门店智能助手 - 业务规则Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f7fa; color: #333; }
+        .app { display: flex; height: 100vh; }
+        .sidebar { width: 240px; background: #1e293b; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header { height: 60px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; padding: 0 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .content { flex: 1; overflow-y: auto; padding: 24px; }
+        .logo { padding: 20px 24px; font-size: 18px; font-weight: 600; border-bottom: 1px solid #334155; }
+        .nav { flex: 1; padding: 16px 0; }
+        .nav-item { padding: 12px 24px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+        .nav-item:hover { background: #334155; }
+        .nav-item.active { background: #3b82f6; }
+        .nav-icon { width: 20px; height: 20px; }
+        .header-title { font-size: 20px; font-weight: 600; }
+        .header-right { margin-left: auto; display: flex; align-items: center; gap: 16px; color: #64748b; font-size: 13px; }
+        .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1e293b; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #1e293b; }
+        .stat-change { font-size: 12px; margin-top: 4px; }
+        .stat-change.up { color: #10b981; }
+        .stat-change.down { color: #ef4444; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 12px; text-align: left; font-weight: 600; font-size: 13px; color: #64748b; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        tr:hover { background: #f8fafc; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-sm { padding: 4px 12px; font-size: 12px; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .chart-container { height: 420px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .drawer-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; z-index: 100; }
+        .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 620px; background: #fff; z-index: 101; transform: translateX(100%); transition: transform 0.3s; overflow-y: auto; }
+        .drawer.open { transform: translateX(0); }
+        .drawer-header { padding: 20px 24px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; position: sticky; top: 0; background: #fff; z-index: 1; }
+        .drawer-title { font-size: 18px; font-weight: 600; }
+        .drawer-close { margin-left: auto; cursor: pointer; font-size: 24px; color: #64748b; background: none; border: none; }
+        .drawer-content { padding: 24px; }
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; margin: 0 auto 16px; }
+        .score-excellent { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+        .score-good { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+        .score-fair { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+        .score-poor { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .dimension-item { margin-bottom: 16px; }
+        .dimension-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .dimension-name { font-size: 14px; font-weight: 500; }
+        .dimension-score { font-size: 14px; font-weight: 600; }
+        .rule-result { padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .rule-result.success { background: #d1fae5; border-left: 4px solid #10b981; }
+        .rule-result.warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .rule-result.danger { background: #fee2e2; border-left: 4px solid #ef4444; }
+        .rule-result.info { background: #dbeafe; border-left: 4px solid #3b82f6; }
+        .rule-title { font-weight: 600; margin-bottom: 8px; }
+        .rule-detail { font-size: 14px; color: #475569; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="logo">门店智能助手</div>
+            <div class="nav">
+                <div class="nav-item active" data-page="overview">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span>门店总览</span>
+                </div>
+                <div class="nav-item" data-page="loan">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>借款评估</span>
+                </div>
+                <div class="nav-item" data-page="deposit">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    <span>押货比例</span>
+                </div>
+                <div class="nav-item" data-page="quadrant">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+                    <span>四象限分析</span>
+                </div>
+                <div class="nav-item" data-page="credit">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>信用评分</span>
+                </div>
+            </div>
+        </div>
+        <div class="main">
+            <div class="header">
+                <div class="header-title" id="pageTitle">门店总览</div>
+                <div class="header-right"><span>数据更新时间：2026-08-11 10:00</span></div>
+            </div>
+            <div class="content">
+                <div class="page active" id="page-overview">
+                    <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-label">门店总数</div><div class="stat-value" id="statTotal">-</div><div class="stat-change up">运作中</div></div>
+                        <div class="stat-card"><div class="stat-label">可借款门店</div><div class="stat-value" id="statLoan">-</div><div class="stat-change" id="statLoanPct">-</div></div>
+                        <div class="stat-card"><div class="stat-label">押货预警门店</div><div class="stat-value" id="statDepositWarn">-</div><div class="stat-change down">需关注</div></div>
+                        <div class="stat-card"><div class="stat-label">平均信用评分</div><div class="stat-value" id="statAvgCredit">-</div><div class="stat-change" id="statCreditTrend">-</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">门店列表</div>
+                        <div class="table-container">
+                            <table id="storeTable"><thead><tr>
+                                <th>门店编号</th><th>门店名称</th><th>区域</th><th>月均收入</th><th>月均销售</th><th>信用评分</th><th>借款状态</th><th>押货比例</th><th>象限</th><th>操作</th>
+                            </tr></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+                <div class="page" id="page-loan">
+                    <div class="card">
+                        <div class="card-title">信誉额借款评估</div>
+                        <div class="rule-result success">
+                            <div class="rule-title">评估规则说明</div>
+                            <div class="rule-detail">借款条件（全部满足）：网点类型=运作店 &amp; 保证金类型!=1:3 &amp; 非分店 &amp; 云商信用额=0 &amp; 分级押货信用额=0 &amp; 钱包结余>=0 &amp; 押货保证金结余近半年均>=0<br>借款额度：收入0.5-3万->10,000元 | 收入3-5万->30,000元 | 收入>=5万->30,000元</div>
+                        </div>
+                        <div class="table-container">
+                            <table id="loanTable"><thead><tr>
+                                <th>门店编号</th><th>门店名称</th><th>网点类型</th><th>保证金类型</th><th>分店</th><th>云商信用额</th><th>分级押货信用额</th><th>钱包结余</th><th>押货保证金结余(半年均)</th><th>月均收入</th><th>可借款</th><th>建议额度</th><th>未通过条件</th>
+                            </tr></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+                <div class="page" id="page-deposit">
+                    <div class="card">
+                        <div class="card-title">门店押货比例调整建议</div>
+                        <div class="rule-result warning">
+                            <div class="rule-title">评估规则说明</div>
+                            <div class="rule-detail">75%->85%（上调）：网点状态!=不运作 + 满足任一：体验店/微店全调85% / 销售业绩&lt;1万 / 冻结资格 / 押货余额连续负 / 连续>=3月业绩为零 / 交付差额增大且最近期押货余额欠款<br>85%->75%（下调）：网点状态!=不运作 + 销售额>3万 + 押货保证金余额>0 + 平均收入>3万<br>1.0：按申请 / 不调</div>
+                        </div>
+                        <div class="table-container">
+                            <table id="depositTable"><thead><tr>
+                                <th>门店编号</th><th>门店名称</th><th>当前比例</th><th>网点状态</th><th>月销售额</th><th>押货保证金余额</th><th>月均收入(近3月)</th><th>交付差额</th><th>建议调整</th><th>建议比例</th><th>原因</th>
+                            </tr></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+                <div class="page" id="page-quadrant">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">销售与收入四象限分析</div>
+                            <div id="quadrantChart" class="chart-container"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">象限分布统计</div>
+                            <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+                                <div class="stat-card"><div class="stat-label">高销售高收入</div><div class="stat-value" id="q1Count">0</div><div class="stat-change up">优质门店</div></div>
+                                <div class="stat-card"><div class="stat-label">低销售高收入</div><div class="stat-value" id="q2Count">0</div><div class="stat-change">需关注收入来源</div></div>
+                                <div class="stat-card"><div class="stat-label">低销售低收入</div><div class="stat-value" id="q3Count">0</div><div class="stat-change down">需改进</div></div>
+                                <div class="stat-card"><div class="stat-label">高销售低收入</div><div class="stat-value" id="q4Count">0</div><div class="stat-change down">需核查</div></div>
+                            </div>
+                            <div style="margin-top: 24px;">
+                                <div class="card-title">象限说明</div>
+                                <div style="font-size: 14px; color: #64748b; line-height: 1.8;">
+                                    <div>X轴阈值：平均月销售金额 10,000元</div>
+                                    <div>Y轴阈值：综合收入月均 100,000元</div>
+                                    <div style="margin-top: 12px;">
+                                        <span class="badge badge-success">高销售高收入</span> 优质门店，可加大支持<br>
+                                        <span class="badge badge-info">低销售高收入</span> 收入来源需关注<br>
+                                        <span class="badge badge-warning">低销售低收入</span> 经营能力需提升<br>
+                                        <span class="badge badge-danger">高销售低收入</span> 收入匹配需核查
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="page" id="page-credit">
+                    <div class="card">
+                        <div class="card-title">信用评分体系</div>
+                        <div class="rule-result success">
+                            <div class="rule-title">评分模型</div>
+                            <div class="rule-detail">综合得分 = 财务健康x0.3 + 运营效能x0.25 + 履约信用x0.20 + 市场竞争力x0.15 + 合规风控x0.1<br>等级：>=95=5A优+ | 90-94=4A优- | 70-89=3A良 | 60-69=2A差+ | &lt;60=1A差-<br>特殊规则：职级10(客户总监)->直接4A（分店除外）</div>
+                        </div>
+                        <div class="table-container">
+                            <table id="creditTable"><thead><tr>
+                                <th>门店编号</th><th>门店名称</th><th>财务健康<br>(30%)</th><th>运营效能<br>(25%)</th><th>履约信用<br>(20%)</th><th>市场竞争力<br>(15%)</th><th>合规风控<br>(10%)</th><th>综合得分</th><th>等级</th><th>操作</th>
+                            </tr></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <div class="drawer-title" id="drawerTitle">门店详情</div>
+            <button class="drawer-close" id="drawerClose">&times;</button>
+        </div>
+        <div class="drawer-content" id="drawerContent"></div>
+    </div>
+    <script>
+
+// ===== MOCK DATA =====
+var stores = [
+    { id:"SC001", name:"张伟服务中心", region:"华南-广州", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"张伟", managerCard:"P10001", rank:"中级客户经理", status:"正常",
+      income6m:52000, income3m:55000, performance6m:48000, cloudCredit:0, walletBalance:8500, tierCredit:0, depositBal6mAvg:12000, depositBalNow:15000, inventory:180000,
+      deliveryDiff3m:3000, sales3mAvg:45000, compositeIncome:125000, avgMonthlySales:42000,
+      inventoryConsume3m:220000, slowItems:5, overdueDays:0, defaultCount:0, deliveryRatio:0.92, complaintHours:36, salonMonthly:25, deliveryPV:480000, teamRatio:0.85, violations:0 },
+    { id:"SC002", name:"李娜服务中心", region:"华南-深圳", type:"运作店", depositType:"1:2", isBranch:false, discount:0.75, manager:"李娜", managerCard:"P10002", rank:"客户总监", status:"正常",
+      income6m:38000, income3m:35000, performance6m:42000, cloudCredit:0, walletBalance:5200, tierCredit:0, depositBal6mAvg:8000, depositBalNow:6000, inventory:350000,
+      deliveryDiff3m:-5000, sales3mAvg:62000, compositeIncome:150000, avgMonthlySales:58000,
+      inventoryConsume3m:180000, slowItems:12, overdueDays:5, defaultCount:0, deliveryRatio:0.88, complaintHours:60, salonMonthly:15, deliveryPV:380000, teamRatio:0.78, violations:0 },
+    { id:"SC003", name:"王强服务中心", region:"华东-上海", type:"运作店", depositType:"1:1", isBranch:false, discount:0.85, manager:"王强", managerCard:"P10003", rank:"初级客户经理", status:"正常",
+      income6m:28000, income3m:25000, performance6m:30000, cloudCredit:0, walletBalance:-2000, tierCredit:0, depositBal6mAvg:-1500, depositBalNow:-3000, inventory:95000,
+      deliveryDiff3m:8000, sales3mAvg:8000, compositeIncome:85000, avgMonthlySales:7500,
+      inventoryConsume3m:85000, slowItems:18, overdueDays:20, defaultCount:1, deliveryRatio:0.75, complaintHours:96, salonMonthly:3, deliveryPV:200000, teamRatio:0.60, violations:1 },
+    { id:"SC004", name:"刘芳服务中心", region:"华东-杭州", type:"运作店", depositType:"1:2", isBranch:true, discount:0.85, manager:"刘芳", managerCard:"P10004", rank:"中级客户经理", status:"正常",
+      income6m:65000, income3m:68000, performance6m:60000, cloudCredit:0, walletBalance:15000, tierCredit:0, depositBal6mAvg:25000, depositBalNow:28000, inventory:520000,
+      deliveryDiff3m:-8000, sales3mAvg:85000, compositeIncome:200000, avgMonthlySales:80000,
+      inventoryConsume3m:350000, slowItems:3, overdueDays:0, defaultCount:0, deliveryRatio:0.95, complaintHours:24, salonMonthly:45, deliveryPV:650000, teamRatio:0.92, violations:0 },
+    { id:"SC005", name:"陈明服务中心", region:"华北-北京", type:"运作店", depositType:"1:3", isBranch:false, discount:1.0, manager:"陈明", managerCard:"P10005", rank:"客户经理以下", status:"正常",
+      income6m:15000, income3m:12000, performance6m:18000, cloudCredit:5000, walletBalance:3000, tierCredit:8000, depositBal6mAvg:5000, depositBalNow:4000, inventory:60000,
+      deliveryDiff3m:2000, sales3mAvg:15000, compositeIncome:45000, avgMonthlySales:14000,
+      inventoryConsume3m:45000, slowItems:22, overdueDays:30, defaultCount:2, deliveryRatio:0.55, complaintHours:120, salonMonthly:0, deliveryPV:100000, teamRatio:0.40, violations:2 },
+    { id:"SC006", name:"赵丽服务中心", region:"华北-天津", type:"运作店", depositType:"1:2", isBranch:false, discount:0.75, manager:"赵丽", managerCard:"P10006", rank:"初级客户经理", status:"冻结",
+      income6m:8000, income3m:5000, performance6m:6000, cloudCredit:0, walletBalance:-5000, tierCredit:0, depositBal6mAvg:-3000, depositBalNow:-8000, inventory:30000,
+      deliveryDiff3m:6000, sales3mAvg:4000, compositeIncome:35000, avgMonthlySales:3500,
+      inventoryConsume3m:20000, slowItems:25, overdueDays:45, defaultCount:1, deliveryRatio:0.45, complaintHours:168, salonMonthly:0, deliveryPV:50000, teamRatio:0.25, violations:1 },
+    { id:"SC007", name:"孙磊服务中心", region:"华中-武汉", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"孙磊", managerCard:"P10007", rank:"中级客户经理", status:"正常",
+      income6m:42000, income3m:45000, performance6m:40000, cloudCredit:0, walletBalance:10000, tierCredit:0, depositBal6mAvg:18000, depositBalNow:20000, inventory:280000,
+      deliveryDiff3m:-3000, sales3mAvg:52000, compositeIncome:130000, avgMonthlySales:48000,
+      inventoryConsume3m:250000, slowItems:8, overdueDays:0, defaultCount:0, deliveryRatio:0.90, complaintHours:48, salonMonthly:30, deliveryPV:420000, teamRatio:0.88, violations:0 },
+    { id:"SC008", name:"周婷服务中心", region:"华中-长沙", type:"体验店", depositType:"1:2", isBranch:false, discount:0.85, manager:"周婷", managerCard:"P10008", rank:"客户经理以下", status:"正常",
+      income6m:18000, income3m:16000, performance6m:20000, cloudCredit:0, walletBalance:2000, tierCredit:0, depositBal6mAvg:5000, depositBalNow:3000, inventory:120000,
+      deliveryDiff3m:4000, sales3mAvg:12000, compositeIncome:65000, avgMonthlySales:11000,
+      inventoryConsume3m:90000, slowItems:15, overdueDays:10, defaultCount:0, deliveryRatio:0.70, complaintHours:72, salonMonthly:8, deliveryPV:180000, teamRatio:0.55, violations:0 },
+    { id:"SC009", name:"吴刚服务中心", region:"西南-成都", type:"运作店", depositType:"1:2", isBranch:false, discount:0.75, manager:"吴刚", managerCard:"P10009", rank:"高级客户经理", status:"正常",
+      income6m:55000, income3m:58000, performance6m:50000, cloudCredit:0, walletBalance:20000, tierCredit:0, depositBal6mAvg:30000, depositBalNow:35000, inventory:600000,
+      deliveryDiff3m:-10000, sales3mAvg:120000, compositeIncome:180000, avgMonthlySales:110000,
+      inventoryConsume3m:400000, slowItems:2, overdueDays:0, defaultCount:0, deliveryRatio:0.98, complaintHours:18, salonMonthly:50, deliveryPV:550000, teamRatio:0.95, violations:0 },
+    { id:"SC010", name:"郑华服务中心", region:"西南-重庆", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"郑华", managerCard:"P10010", rank:"初级客户经理", status:"正常",
+      income6m:22000, income3m:20000, performance6m:25000, cloudCredit:0, walletBalance:3000, tierCredit:0, depositBal6mAvg:7000, depositBalNow:5000, inventory:150000,
+      deliveryDiff3m:5000, sales3mAvg:28000, compositeIncome:90000, avgMonthlySales:26000,
+      inventoryConsume3m:120000, slowItems:10, overdueDays:8, defaultCount:0, deliveryRatio:0.82, complaintHours:56, salonMonthly:12, deliveryPV:250000, teamRatio:0.70, violations:0 },
+    { id:"SC011", name:"黄丽服务中心", region:"东北-沈阳", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"黄丽", managerCard:"P10011", rank:"中级客户经理", status:"正常",
+      income6m:35000, income3m:32000, performance6m:38000, cloudCredit:0, walletBalance:6000, tierCredit:0, depositBal6mAvg:10000, depositBalNow:8000, inventory:220000,
+      deliveryDiff3m:2000, sales3mAvg:38000, compositeIncome:110000, avgMonthlySales:36000,
+      inventoryConsume3m:160000, slowItems:7, overdueDays:3, defaultCount:0, deliveryRatio:0.86, complaintHours:40, salonMonthly:20, deliveryPV:350000, teamRatio:0.80, violations:0 },
+    { id:"SC012", name:"林峰服务中心", region:"东北-大连", type:"不运作店", depositType:"1:2", isBranch:false, discount:0.75, manager:"林峰", managerCard:"P10012", rank:"客户经理以下", status:"不运作",
+      income6m:0, income3m:0, performance6m:0, cloudCredit:0, walletBalance:0, tierCredit:0, depositBal6mAvg:-500, depositBalNow:-1000, inventory:5000,
+      deliveryDiff3m:0, sales3mAvg:0, compositeIncome:5000, avgMonthlySales:0,
+      inventoryConsume3m:0, slowItems:30, overdueDays:90, defaultCount:3, deliveryRatio:0, complaintHours:0, salonMonthly:0, deliveryPV:0, teamRatio:0, violations:3 },
+    { id:"SC013", name:"何敏服务中心", region:"西北-西安", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"何敏", managerCard:"P10013", rank:"初级客户经理", status:"正常",
+      income6m:30000, income3m:28000, performance6m:32000, cloudCredit:0, walletBalance:4000, tierCredit:0, depositBal6mAvg:9000, depositBalNow:7000, inventory:200000,
+      deliveryDiff3m:3500, sales3mAvg:35000, compositeIncome:105000, avgMonthlySales:33000,
+      inventoryConsume3m:140000, slowItems:9, overdueDays:5, defaultCount:0, deliveryRatio:0.84, complaintHours:50, salonMonthly:18, deliveryPV:300000, teamRatio:0.75, violations:0 },
+    { id:"SC014", name:"杨洋服务中心", region:"西北-兰州", type:"运作店", depositType:"1:2", isBranch:false, discount:0.75, manager:"杨洋", managerCard:"P10014", rank:"客户经理以下", status:"正常",
+      income6m:12000, income3m:10000, performance6m:14000, cloudCredit:0, walletBalance:1000, tierCredit:0, depositBal6mAvg:2000, depositBalNow:500, inventory:80000,
+      deliveryDiff3m:7000, sales3mAvg:9000, compositeIncome:55000, avgMonthlySales:8500,
+      inventoryConsume3m:60000, slowItems:20, overdueDays:15, defaultCount:0, deliveryRatio:0.60, complaintHours:80, salonMonthly:2, deliveryPV:120000, teamRatio:0.45, violations:0 },
+    { id:"SC015", name:"徐静服务中心", region:"华南-厦门", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"徐静", managerCard:"P10015", rank:"客户总监", status:"正常",
+      income6m:70000, income3m:75000, performance6m:65000, cloudCredit:0, walletBalance:25000, tierCredit:0, depositBal6mAvg:35000, depositBalNow:40000, inventory:750000,
+      deliveryDiff3m:-12000, sales3mAvg:95000, compositeIncome:220000, avgMonthlySales:90000,
+      inventoryConsume3m:500000, slowItems:1, overdueDays:0, defaultCount:0, deliveryRatio:0.96, complaintHours:20, salonMonthly:55, deliveryPV:700000, teamRatio:0.96, violations:0 },
+    { id:"SC016", name:"马超服务中心", region:"华东-南京", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"马超", managerCard:"P10016", rank:"中级客户经理", status:"正常",
+      income6m:45000, income3m:48000, performance6m:43000, cloudCredit:0, walletBalance:12000, tierCredit:0, depositBal6mAvg:20000, depositBalNow:22000, inventory:320000,
+      deliveryDiff3m:-4000, sales3mAvg:55000, compositeIncome:140000, avgMonthlySales:50000,
+      inventoryConsume3m:280000, slowItems:6, overdueDays:0, defaultCount:0, deliveryRatio:0.91, complaintHours:30, salonMonthly:35, deliveryPV:450000, teamRatio:0.90, violations:0 },
+    { id:"SC017", name:"罗琳服务中心", region:"华中-郑州", type:"运作店", depositType:"1:2", isBranch:true, discount:0.75, manager:"罗琳", managerCard:"P10017", rank:"初级客户经理", status:"正常",
+      income6m:20000, income3m:18000, performance6m:22000, cloudCredit:0, walletBalance:1500, tierCredit:0, depositBal6mAvg:3000, depositBalNow:1000, inventory:110000,
+      deliveryDiff3m:6000, sales3mAvg:15000, compositeIncome:75000, avgMonthlySales:14000,
+      inventoryConsume3m:95000, slowItems:14, overdueDays:12, defaultCount:0, deliveryRatio:0.68, complaintHours:65, salonMonthly:6, deliveryPV:200000, teamRatio:0.50, violations:0 },
+    { id:"SC018", name:"谢军服务中心", region:"西南-昆明", type:"运作店", depositType:"1:2", isBranch:false, discount:0.85, manager:"谢军", managerCard:"P10018", rank:"高级客户经理", status:"正常",
+      income6m:48000, income3m:50000, performance6m:46000, cloudCredit:0, walletBalance:18000, tierCredit:0, depositBal6mAvg:22000, depositBalNow:25000, inventory:400000,
+      deliveryDiff3m:-6000, sales3mAvg:60000, compositeIncome:160000, avgMonthlySales:55000,
+      inventoryConsume3m:300000, slowItems:4, overdueDays:0, defaultCount:0, deliveryRatio:0.93, complaintHours:28, salonMonthly:40, deliveryPV:480000, teamRatio:0.91, violations:0 }
+];
+
+// ===== RULE 1: LOAN EVALUATION =====
+function evalLoan(s) {
+    var conditions = [
+        { name: "网点类型=运作店", pass: s.type === "运作店" },
+        { name: "保证金类型!=1:3", pass: s.depositType !== "1:3" },
+        { name: "非分店", pass: !s.isBranch },
+        { name: "云商信用额=0", pass: s.cloudCredit === 0 },
+        { name: "分级押货信用额=0", pass: s.tierCredit === 0 },
+        { name: "钱包结余>=0", pass: s.walletBalance >= 0 },
+        { name: "押货保证金结余近半年均>=0", pass: s.depositBal6mAvg >= 0 }
+    ];
+    var failed = conditions.filter(function(c){ return !c.pass; }).map(function(c){ return c.name; });
+    var canLoan = failed.length === 0;
+    var amount = 0;
+    if (canLoan) {
+        var inc = s.income6m;
+        if (inc >= 50000) amount = 30000;
+        else if (inc >= 30000) amount = 30000;
+        else if (inc >= 5000) amount = 10000;
+        else amount = 0;
+    }
+    return { canLoan: canLoan, amount: amount, failed: failed, conditions: conditions };
+}
+
+// ===== RULE 2: DEPOSIT RATIO =====
+function evalDeposit(s) {
+    if (s.status === "不运作") return { direction: "不调", ratio: s.discount, reasons: ["网点不运作"] };
+    if (s.discount === 1.0) return { direction: "按申请", ratio: 1.0, reasons: ["当前比例1.0，按申请处理"] };
+    var reasons = [];
+    var isMicroShop = (s.type === "体验店");
+    var salesLow = s.sales3mAvg < 10000;
+    var isFrozen = s.status === "冻结";
+    var depositNeg = s.depositBalNow < 0;
+    var perfZero = s.performance6m <= 0;
+    var deliveryUpDebt = s.deliveryDiff3m > 0 && s.depositBalNow < 0;
+
+    if (s.discount === 0.75) {
+        if (isMicroShop) reasons.push("体验店/微店全调85%");
+        if (salesLow) reasons.push("销售业绩<1万");
+        if (isFrozen) reasons.push("冻结资格");
+        if (depositNeg) reasons.push("押货余额连续负");
+        if (perfZero) reasons.push("连续>=3月业绩为零");
+        if (deliveryUpDebt) reasons.push("交付差额增大且押货余额欠款");
+        if (reasons.length > 0) return { direction: "上调", ratio: 0.85, reasons: reasons };
+        return { direction: "维持", ratio: 0.75, reasons: ["未触发上调条件"] };
+    }
+    if (s.discount === 0.85) {
+        var salesHigh = s.sales3mAvg > 30000;
+        var depositPos = s.depositBalNow > 0;
+        var incomeHigh = s.income3m > 30000;
+        if (salesHigh && depositPos && incomeHigh) {
+            return { direction: "下调", ratio: 0.75, reasons: ["销售额>3万 且 押货保证金余额>0 且 收入>3万"] };
+        }
+        if (isMicroShop) reasons.push("体验店/微店全调85%");
+        if (salesLow) reasons.push("销售业绩<1万");
+        if (isFrozen) reasons.push("冻结资格");
+        if (depositNeg) reasons.push("押货余额连续负");
+        if (perfZero) reasons.push("连续>=3月业绩为零");
+        if (deliveryUpDebt) reasons.push("交付差额增大且押货余额欠款");
+        if (reasons.length > 0) return { direction: "维持85%", ratio: 0.85, reasons: reasons };
+        return { direction: "维持", ratio: 0.85, reasons: ["未触发调整条件"] };
+    }
+    return { direction: "维持", ratio: s.discount, reasons: ["当前比例无对应规则"] };
+}
+
+// ===== RULE 3: QUADRANT =====
+function evalQuadrant(s) {
+    var x = s.avgMonthlySales;
+    var y = s.compositeIncome;
+    var xHigh = x > 10000;
+    var yHigh = y > 100000;
+    var category, label;
+    if (xHigh && yHigh) { category = "q1"; label = "高销售高收入"; }
+    else if (!xHigh && yHigh) { category = "q2"; label = "低销售高收入"; }
+    else if (!xHigh && !yHigh) { category = "q3"; label = "低销售低收入"; }
+    else { category = "q4"; label = "高销售低收入"; }
+    return { category: category, label: label, x: x, y: y };
+}
+
+// ===== RULE 4: CREDIT SCORING =====
+function scoreRange(val, ranges) {
+    for (var i = 0; i < ranges.length; i++) {
+        var r = ranges[i];
+        var minOk = (r.min === undefined || val >= r.min);
+        var maxOk = (r.max === undefined || val <= r.max);
+        if (minOk && maxOk) return r.score;
+    }
+    return 0;
+}
+
+function evalCredit(s) {
+    // Dim1: Financial Health (30%)
+    var incomeScore = scoreRange(s.compositeIncome, [
+        {max:1000,score:10},{min:1000,max:3000,score:20},{min:3000,max:5000,score:40},
+        {min:5000,max:10000,score:60},{min:10000,max:30000,score:70},{min:30000,max:50000,score:80},
+        {min:50000,max:100000,score:90},{min:100000,score:100}
+    ]);
+    var totalCredit = (s.cloudCredit||0) + (s.tierCredit||0);
+    var creditScore = scoreRange(totalCredit, [
+        {min:50000,score:50},{min:30000,max:49999,score:70},{min:10000,max:29999,score:90},{max:9999,score:100}
+    ]);
+    var depositLevelScore = s.discount >= 1.0 ? 100 : (s.discount >= 0.85 ? 80 : 70);
+    var totalDebt = Math.abs(Math.min(0, s.depositBalNow)) + Math.abs(Math.min(0, s.walletBalance));
+    var debtScore = scoreRange(totalDebt, [
+        {min:50000,score:50},{min:30000,max:49999,score:70},{min:10000,max:29999,score:90},{max:9999,score:100}
+    ]);
+    var dim1 = incomeScore*0.6 + creditScore*0.15 + depositLevelScore*0.10 + debtScore*0.15;
+
+    // Dim2: Operational Efficiency (25%)
+    var invScore = scoreRange(s.inventory, [
+        {min:800000,score:50},{min:500000,max:799999,score:70},{min:200000,max:499999,score:90},{max:199999,score:100}
+    ]);
+    var turnoverScore = scoreRange(s.inventoryConsume3m, [
+        {max:30000,score:50},{min:30000,max:100000,score:70},{min:100000,max:200000,score:90},{min:200000,score:100}
+    ]);
+    var slowScore = scoreRange(s.slowItems, [
+        {min:20,score:50},{min:10,max:19,score:70},{min:1,max:9,score:80},{max:0,score:100}
+    ]);
+    var dim2 = invScore*0.35 + turnoverScore*0.40 + slowScore*0.25;
+
+    // Dim3: Contract Credit (20%)
+    var overdueScore = s.overdueDays > 15 ? 0 : (s.overdueDays > 0 ? 70 : 100);
+    var defaultScore = s.defaultCount >= 2 ? 0 : (s.defaultCount === 1 ? 55 : 100);
+    var dim3 = overdueScore*0.5 + defaultScore*0.5;
+
+    // Dim4: Market Competitiveness (15%)
+    var rankMap = {"客户经理以下":0,"初级客户经理":60,"中级客户经理":80,"高级客户经理":80,"客户总监":100};
+    var rankScore = rankMap[s.rank] || 0;
+    var drScore = s.deliveryRatio < 0.3 ? 60 : (s.deliveryRatio < 0.8 ? 70 : (s.deliveryRatio < 1.0 ? 85 : 100));
+    var compScore = s.complaintHours <= 24 ? 100 : (s.complaintHours <= 48 ? 80 : (s.complaintHours <= 72 ? 70 : 50));
+    var salonScore = scoreRange(s.salonMonthly, [
+        {max:0,score:0},{min:1,max:5,score:50},{min:5,max:20,score:70},{min:20,max:40,score:90},{min:40,score:100}
+    ]);
+    var pvScore = scoreRange(s.deliveryPV, [
+        {max:30000,score:50},{min:30000,max:100000,score:70},{min:100000,max:200000,score:90},{min:200000,score:100}
+    ]);
+    var dim4 = rankScore*0.20 + drScore*0.20 + compScore*0.15 + salonScore*0.15 + pvScore*0.30;
+
+    // Dim5: Compliance & Risk (10%)
+    var teamScore = s.teamRatio < 0.3 ? 60 : (s.teamRatio < 0.8 ? 70 : (s.teamRatio < 1.0 ? 85 : 100));
+    var violScore = s.violations >= 2 ? 0 : (s.violations === 1 ? 55 : 100);
+    var dim5 = teamScore*0.5 + violScore*0.5;
+
+    var total = dim1*0.3 + dim2*0.25 + dim3*0.20 + dim4*0.15 + dim5*0.1;
+    total = Math.round(total*10)/10;
+
+    // Special: rank=客户总监 -> 4A (not branch)
+    var grade, gradeLabel, gradeColor;
+    if (s.rank === "客户总监" && !s.isBranch && total < 90) {
+        total = Math.max(total, 90);
+        grade = "4A"; gradeLabel = "优-(职级调整)"; gradeColor = "excellent";
+    } else if (total >= 95) { grade = "5A"; gradeLabel = "优+"; gradeColor = "excellent"; }
+    else if (total >= 90) { grade = "4A"; gradeLabel = "优-"; gradeColor = "excellent"; }
+    else if (total >= 70) { grade = "3A"; gradeLabel = "良"; gradeColor = "good"; }
+    else if (total >= 60) { grade = "2A"; gradeLabel = "差+"; gradeColor = "fair"; }
+    else { grade = "1A"; gradeLabel = "差-"; gradeColor = "poor"; }
+
+    return {
+        total: total, grade: grade, gradeLabel: gradeLabel, gradeColor: gradeColor,
+        dimensions: {
+            financial: Math.round(dim1*10)/10,
+            operational: Math.round(dim2*10)/10,
+            contract: Math.round(dim3*10)/10,
+            market: Math.round(dim4*10)/10,
+            compliance: Math.round(dim5*10)/10
+        }
+    };
+}
+
+// ===== PRECOMPUTE =====
+stores.forEach(function(s) {
+    s.loan = evalLoan(s);
+    s.deposit = evalDeposit(s);
+    s.quadrant = evalQuadrant(s);
+    s.credit = evalCredit(s);
+});
+
+// ===== HELPERS =====
+function fmt(n) {
+    if (n >= 10000) return (n/10000).toFixed(1) + "万";
+    return n.toLocaleString();
+}
+function fmtMoney(n) { return n.toLocaleString() + "元"; }
+
+function loanBadge(s) {
+    if (s.loan.canLoan) return '<span class="badge badge-success">可借 '+fmtMoney(s.loan.amount)+'</span>';
+    return '<span class="badge badge-danger">不可借</span>';
+}
+function depositBadge(s) {
+    var d = s.deposit.direction;
+    if (d === "上调") return '<span class="badge badge-danger">上调->85%</span>';
+    if (d === "下调") return '<span class="badge badge-success">下调->75%</span>';
+    return '<span class="badge badge-warning">维持'+(s.deposit.ratio*100).toFixed(0)+'%</span>';
+}
+function quadrantBadge(s) {
+    var map = {q1:"badge-success",q2:"badge-info",q3:"badge-warning",q4:"badge-danger"};
+    return '<span class="badge '+(map[s.quadrant.category]||"badge-info")+'">'+s.quadrant.label+'</span>';
+}
+function creditBadge(s) {
+    var c = s.credit;
+    var map = {excellent:"badge-success",good:"badge-info",fair:"badge-warning",poor:"badge-danger"};
+    return '<span class="badge '+(map[c.gradeColor]||"badge-info")+'">'+c.grade+' '+c.gradeLabel+'</span>';
+}
+
+// ===== RENDER OVERVIEW =====
+function renderOverview() {
+    var total = stores.length;
+    var loanable = stores.filter(function(s){return s.loan.canLoan;}).length;
+    var depositWarn = stores.filter(function(s){return s.deposit.direction === "上调";}).length;
+    var avgCredit = (stores.reduce(function(a,s){return a+s.credit.total;},0)/total).toFixed(1);
+    document.getElementById("statTotal").textContent = total;
+    document.getElementById("statLoan").textContent = loanable;
+    document.getElementById("statLoanPct").textContent = "占比 "+Math.round(loanable/total*100)+"%";
+    document.getElementById("statDepositWarn").textContent = depositWarn;
+    document.getElementById("statAvgCredit").textContent = avgCredit;
+    var avgGrade = avgCredit >= 90 ? "4A 优-" : (avgCredit >= 70 ? "3A 良" : "2A 差+");
+    document.getElementById("statCreditTrend").textContent = avgGrade;
+
+    var tbody = document.querySelector("#storeTable tbody");
+    tbody.innerHTML = stores.map(function(s) {
+        return '<tr><td>'+s.id+'</td><td>'+s.name+'</td><td>'+s.region+'</td><td>'+fmt(s.income6m)+'</td><td>'+fmt(s.avgMonthlySales)+'</td><td>'+s.credit.total+'</td><td>'+loanBadge(s)+'</td><td>'+depositBadge(s)+'</td><td>'+quadrantBadge(s)+'</td><td><button class="btn btn-primary btn-sm" onclick="openDrawer(\''+s.id+'\')">详情</button></td></tr>';
+    }).join("");
+}
+
+// ===== RENDER LOAN =====
+function renderLoan() {
+    var tbody = document.querySelector("#loanTable tbody");
+    tbody.innerHTML = stores.map(function(s) {
+        var l = s.loan;
+        return '<tr><td>'+s.id+'</td><td>'+s.name+'</td><td>'+s.type+'</td><td>'+s.depositType+'</td><td>'+(s.isBranch?"是":"否")+'</td><td>'+s.cloudCredit+'</td><td>'+s.tierCredit+'</td><td>'+s.walletBalance.toLocaleString()+'</td><td>'+s.depositBal6mAvg.toLocaleString()+'</td><td>'+fmt(s.income6m)+'</td><td>'+loanBadge(s)+'</td><td>'+(l.canLoan?fmtMoney(l.amount):"-")+'</td><td style="font-size:12px;color:#64748b;max-width:200px">'+(l.failed.length>0?l.failed.join("; "):"全部通过")+'</td></tr>';
+    }).join("");
+}
+
+// ===== RENDER DEPOSIT =====
+function renderDeposit() {
+    var tbody = document.querySelector("#depositTable tbody");
+    tbody.innerHTML = stores.map(function(s) {
+        var d = s.deposit;
+        return '<tr><td>'+s.id+'</td><td>'+s.name+'</td><td>'+(s.discount*100).toFixed(0)+'%</td><td>'+s.status+'</td><td>'+fmt(s.sales3mAvg)+'</td><td>'+s.depositBalNow.toLocaleString()+'</td><td>'+fmt(s.income3m)+'</td><td>'+s.deliveryDiff3m.toLocaleString()+'</td><td>'+depositBadge(s)+'</td><td>'+(d.ratio*100).toFixed(0)+'%</td><td style="font-size:12px;color:#64748b;max-width:250px">'+d.reasons.join("; ")+'</td></tr>';
+    }).join("");
+}
+
+// ===== RENDER QUADRANT =====
+var quadrantRendered = false;
+function renderQuadrant() {
+    var counts = {q1:0,q2:0,q3:0,q4:0};
+    stores.forEach(function(s){ counts[s.quadrant.category]++; });
+    document.getElementById("q1Count").textContent = counts.q1;
+    document.getElementById("q2Count").textContent = counts.q2;
+    document.getElementById("q3Count").textContent = counts.q3;
+    document.getElementById("q4Count").textContent = counts.q4;
+
+    var chart = echarts.init(document.getElementById("quadrantChart"));
+    var colorMap = {q1:"#10b981",q2:"#3b82f6",q3:"#f59e0b",q4:"#ef4444"};
+    var labelMap = {q1:"高销售高收入",q2:"低销售高收入",q3:"低销售低收入",q4:"高销售低收入"};
+    var seriesData = {};
+    stores.forEach(function(s) {
+        var cat = s.quadrant.category;
+        if (!seriesData[cat]) seriesData[cat] = [];
+        seriesData[cat].push({ value:[s.avgMonthlySales/10000, s.compositeIncome/10000], name:s.name, storeId:s.id });
+    });
+    var series = Object.keys(seriesData).map(function(cat) {
+        return { name:labelMap[cat], type:"scatter", data:seriesData[cat], symbolSize:14, itemStyle:{color:colorMap[cat]}, emphasis:{itemStyle:{borderColor:"#333",borderWidth:2}} };
+    });
+    chart.setOption({
+        tooltip: { trigger:"item", formatter:function(p){ return p.data.name+"<br>月销售: "+p.value[0].toFixed(1)+"万<br>综合收入: "+p.value[1].toFixed(1)+"万"; } },
+        legend: { data:Object.keys(seriesData).map(function(c){return labelMap[c];}), bottom:0 },
+        grid: { left:60, right:30, top:30, bottom:50 },
+        xAxis: { name:"平均月销售(万)", nameLocation:"center", nameGap:30, splitLine:{show:true,lineStyle:{type:"dashed"}} },
+        yAxis: { name:"综合收入月均(万)", nameLocation:"center", nameGap:45, splitLine:{show:true,lineStyle:{type:"dashed"}} },
+        series: series.concat([
+            { type:"line", markLine:{ silent:true, symbol:"none", lineStyle:{color:"#94a3b8",type:"dashed",width:2}, data:[{xAxis:1,label:{formatter:"X=1万",position:"end"}}] }, data:[] },
+            { type:"line", markLine:{ silent:true, symbol:"none", lineStyle:{color:"#94a3b8",type:"dashed",width:2}, data:[{yAxis:10,label:{formatter:"Y=10万",position:"end"}}] }, data:[] }
+        ])
+    });
+    window.addEventListener("resize", function(){ chart.resize(); });
+}
+
+// ===== RENDER CREDIT =====
+function renderCredit() {
+    var tbody = document.querySelector("#creditTable tbody");
+    tbody.innerHTML = stores.map(function(s) {
+        var c = s.credit, d = c.dimensions;
+        return '<tr><td>'+s.id+'</td><td>'+s.name+'</td><td>'+d.financial+'</td><td>'+d.operational+'</td><td>'+d.contract+'</td><td>'+d.market+'</td><td>'+d.compliance+'</td><td><strong>'+c.total+'</strong></td><td>'+creditBadge(s)+'</td><td><button class="btn btn-primary btn-sm" onclick="openDrawer(\''+s.id+'\')">详情</button></td></tr>';
+    }).join("");
+}
+
+// ===== DRAWER =====
+function openDrawer(storeId) {
+    var s = stores.find(function(x){return x.id===storeId;});
+    if (!s) return;
+    document.getElementById("drawerTitle").textContent = s.name + " (" + s.id + ")";
+    var l=s.loan, d=s.deposit, q=s.quadrant, c=s.credit, dim=c.dimensions;
+    var loanClass = l.canLoan ? "success" : "danger";
+    var depClass = d.direction==="上调" ? "danger" : (d.direction==="下调" ? "success" : "warning");
+    var quadClass = q.category==="q1" ? "success" : (q.category==="q3"||q.category==="q4" ? "danger" : "warning");
+
+    var html = '<div style="margin-bottom:24px;"><div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">'
+        + '<div class="score-circle score-'+c.gradeColor+'" style="width:80px;height:80px;font-size:24px;flex-shrink:0;">'+c.total+'</div>'
+        + '<div><div style="font-size:18px;font-weight:600;">'+s.name+'</div>'
+        + '<div style="color:#64748b;">'+s.region+' | '+s.type+' | '+s.rank+'</div>'
+        + '<div style="margin-top:4px;">'+creditBadge(s)+'</div></div></div></div>'
+
+        + '<div style="margin-bottom:24px;"><div class="card-title">基础信息</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px;">'
+        + '<div><span style="color:#64748b;">负责人：</span>'+s.manager+'</div>'
+        + '<div><span style="color:#64748b;">卡号：</span>'+s.managerCard+'</div>'
+        + '<div><span style="color:#64748b;">网点状态：</span>'+s.status+'</div>'
+        + '<div><span style="color:#64748b;">保证金类型：</span>'+s.depositType+'</div>'
+        + '<div><span style="color:#64748b;">是否分店：</span>'+(s.isBranch?"是":"否")+'</div>'
+        + '<div><span style="color:#64748b;">折扣系数：</span>'+(s.discount*100).toFixed(0)+'%</div></div></div>'
+
+        + '<div style="margin-bottom:24px;"><div class="card-title">经营数据</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:14px;">'
+        + '<div><span style="color:#64748b;">月均收入(6月)：</span>'+fmtMoney(s.income6m)+'</div>'
+        + '<div><span style="color:#64748b;">月均收入(3月)：</span>'+fmtMoney(s.income3m)+'</div>'
+        + '<div><span style="color:#64748b;">综合收入月均：</span>'+fmtMoney(s.compositeIncome)+'</div>'
+        + '<div><span style="color:#64748b;">月均销售(6月)：</span>'+fmtMoney(s.avgMonthlySales)+'</div>'
+        + '<div><span style="color:#64748b;">月均销售(3月)：</span>'+fmtMoney(s.sales3mAvg)+'</div>'
+        + '<div><span style="color:#64748b;">月均业绩(6月)：</span>'+fmtMoney(s.performance6m)+'</div>'
+        + '<div><span style="color:#64748b;">库存金额：</span>'+fmtMoney(s.inventory)+'</div>'
+        + '<div><span style="color:#64748b;">交付差额(3月)：</span>'+fmtMoney(s.deliveryDiff3m)+'</div>'
+        + '<div><span style="color:#64748b;">滞销品数：</span>'+s.slowItems+'个</div></div></div>'
+
+        + '<div class="rule-result '+loanClass+'" style="margin-bottom:16px;">'
+        + '<div class="rule-title">借款评估：'+(l.canLoan?"可借款 "+fmtMoney(l.amount):"不可借款")+'</div>'
+        + (l.failed.length>0 ? '<div class="rule-detail">未通过：'+l.failed.join("；")+'</div>' : '<div class="rule-detail">所有条件均已满足</div>') + '</div>'
+
+        + '<div class="rule-result '+depClass+'" style="margin-bottom:16px;">'
+        + '<div class="rule-title">押货比例：'+d.direction+' -> '+(d.ratio*100).toFixed(0)+'%</div>'
+        + '<div class="rule-detail">'+d.reasons.join("；")+'</div></div>'
+
+        + '<div class="rule-result '+quadClass+'" style="margin-bottom:16px;">'
+        + '<div class="rule-title">四象限：'+q.label+'</div>'
+        + '<div class="rule-detail">月销售 '+fmt(s.avgMonthlySales)+' | 综合收入 '+fmt(s.compositeIncome)+'</div></div>'
+
+        + '<div style="margin-bottom:24px;"><div class="card-title">信用评分明细</div>'
+        + '<div class="dimension-item"><div class="dimension-header"><span class="dimension-name">财务健康 (30%)</span><span class="dimension-score">'+dim.financial+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+dim.financial+'%;background:#10b981;"></div></div></div>'
+        + '<div class="dimension-item"><div class="dimension-header"><span class="dimension-name">运营效能 (25%)</span><span class="dimension-score">'+dim.operational+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+dim.operational+'%;background:#3b82f6;"></div></div></div>'
+        + '<div class="dimension-item"><div class="dimension-header"><span class="dimension-name">履约信用 (20%)</span><span class="dimension-score">'+dim.contract+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+dim.contract+'%;background:#8b5cf6;"></div></div></div>'
+        + '<div class="dimension-item"><div class="dimension-header"><span class="dimension-name">市场竞争力 (15%)</span><span class="dimension-score">'+dim.market+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+dim.market+'%;background:#f59e0b;"></div></div></div>'
+        + '<div class="dimension-item"><div class="dimension-header"><span class="dimension-name">合规风控 (10%)</span><span class="dimension-score">'+dim.compliance+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+dim.compliance+'%;background:#ef4444;"></div></div></div></div>';
+
+    document.getElementById("drawerContent").innerHTML = html;
+    document.getElementById("drawer").classList.add("open");
+    document.getElementById("drawerOverlay").style.display = "block";
+}
+
+function closeDrawer() {
+    document.getElementById("drawer").classList.remove("open");
+    document.getElementById("drawerOverlay").style.display = "none";
+}
+
+// ===== NAVIGATION =====
+var pageTitles = {overview:"门店总览",loan:"借款评估",deposit:"押货比例",quadrant:"四象限分析",credit:"信用评分"};
+document.querySelectorAll(".nav-item").forEach(function(item) {
+    item.addEventListener("click", function() {
+        var page = this.dataset.page;
+        document.querySelectorAll(".nav-item").forEach(function(n){n.classList.remove("active");});
+        this.classList.add("active");
+        document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
+        document.getElementById("page-"+page).classList.add("active");
+        document.getElementById("pageTitle").textContent = pageTitles[page];
+        if (page === "quadrant" && !quadrantRendered) {
+            setTimeout(function(){ renderQuadrant(); quadrantRendered = true; }, 100);
+        }
+    });
+});
+
+document.getElementById("drawerOverlay").addEventListener("click", closeDrawer);
+document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+
+// ===== INIT =====
+renderOverview();
+renderLoan();
+renderDeposit();
+renderCredit();
+    </script>
+</body>
+</html>
